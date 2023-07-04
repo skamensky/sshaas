@@ -17,6 +17,7 @@ import (
 
 func main() {
 	var sshCommand, sshKeyFile, lambda_password, functionName, ip_address, region, user string
+
 	flag.StringVar(&sshCommand, "ssh_command", "", "SSH command to be executed")
 	flag.StringVar(&sshKeyFile, "ssh_key_file", "", "Path to the SSH key file")
 	flag.StringVar(&functionName, "function_name", "", "Function name")
@@ -26,9 +27,28 @@ func main() {
 	flag.StringVar(&region, "region", "us-east-1", "aws region")
 	flag.Parse()
 
-	if sshCommand == "" || sshKeyFile == "" || lambda_password == "" {
-		fmt.Println("ssh_command, ssh_key_file, and password are required")
-		flag.PrintDefaults()
+	if sshCommand == "" {
+		fmt.Println("Missing SSH command")
+		os.Exit(1)
+	}
+	if sshKeyFile == "" {
+		fmt.Println("Missing SSH key file")
+		os.Exit(1)
+	}
+	if functionName == "" {
+		fmt.Println("Missing function name")
+		os.Exit(1)
+	}
+	if lambda_password == "" {
+		fmt.Println("Missing Lambda password")
+		os.Exit(1)
+	}
+	if ip_address == "" {
+		fmt.Println("Missing IP address")
+		os.Exit(1)
+	}
+	if user == "" {
+		fmt.Println("Missing SSH user")
 		os.Exit(1)
 	}
 
