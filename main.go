@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"golang.org/x/crypto/ssh"
 )
@@ -24,76 +23,64 @@ type Response struct {
 	Result     string `json:"result"`
 }
 
-func HandleRequest(ctx context.Context, rawRequest events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	requestAsJson, err := json.Marshal(rawRequest)
+func HandleRequest(ctx context.Context, request RequestEvent) (Response, error) {
+	requestAsJson, err := json.Marshal(request)
 	if err == nil {
 		fmt.Println("Request: ", string(requestAsJson))
 	}
 	errMessage := ""
-
-	requestBody := rawRequest.Body
-	var request RequestEvent
-	err = json.Unmarshal([]byte(requestBody), &request)
-	if err != nil {
-		errMessage = fmt.Sprintf("failed to unmarshal request body: %v", err)
-		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
-			StatusCode: 400,
-			Body:       "",
-		}, fmt.Errorf(errMessage)
-	}
 
 	lambda_server_password := os.Getenv("LAMBDA_PASSWORD")
 
 	if lambda_server_password == "" {
 		errMessage = "server is missing lambda_password"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 400,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 
 	if request.LambdaPassword == "" {
 		errMessage = "missing lambda_password"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 400,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 	if request.LambdaPassword != lambda_server_password {
 		// don't waste time on further checks if the password is incorrect
 		errMessage = "incorrect lambda_password"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 403,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 	if request.IPAddress == "" {
 		errMessage = "missing ip_address"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 400,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 	if request.SSHKey == "" {
 		errMessage = "missing ssh_key"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 400,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 
 	if request.Command == "" {
 		errMessage = "missing command"
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 400,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 
@@ -102,9 +89,9 @@ func HandleRequest(ctx context.Context, rawRequest events.LambdaFunctionURLReque
 	if err != nil {
 		errMessage = fmt.Sprintf("failed to parse private key: %v", err)
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 200,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 
@@ -120,9 +107,9 @@ func HandleRequest(ctx context.Context, rawRequest events.LambdaFunctionURLReque
 	if err != nil {
 		errMessage = fmt.Sprintf("failed to connect to SSH server: %v", err)
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 200,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 	defer client.Close()
@@ -131,9 +118,9 @@ func HandleRequest(ctx context.Context, rawRequest events.LambdaFunctionURLReque
 	if err != nil {
 		errMessage = fmt.Sprintf("failed to create SSH session: %v", err)
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 200,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 	defer session.Close()
@@ -142,28 +129,17 @@ func HandleRequest(ctx context.Context, rawRequest events.LambdaFunctionURLReque
 	if err != nil {
 		errMessage = fmt.Sprintf("failed to run SSH command: output: %v err: %v", string(output), err)
 		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
+		return Response{
 			StatusCode: 200,
-			Body:       "",
+			Result:     "",
 		}, fmt.Errorf(errMessage)
 	}
 
 	fmt.Println(string(output))
 
-	response := map[string]string{"result": string(output)}
-	responseAsJson, err := json.Marshal(response)
-	if err != nil {
-		errMessage = fmt.Sprintf("Could not marshal response: %v", err)
-		fmt.Println(errMessage)
-		return events.LambdaFunctionURLResponse{
-			StatusCode: 200,
-			Body:       "",
-		}, fmt.Errorf(errMessage)
-	}
-
-	return events.LambdaFunctionURLResponse{
+	return Response{
 		StatusCode: 200,
-		Body:       string(responseAsJson),
+		Result:     string(output),
 	}, nil
 
 }
